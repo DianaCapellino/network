@@ -1,8 +1,11 @@
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+import json
 
 from .models import User, Post, Like, Follower
 
@@ -17,11 +20,17 @@ def index(request):
         return HttpResponseRedirect(reverse("index"))
 
     else:
-        for post in Post.objects.all():
+        all_posts = Post.objects.all()
+        for post in all_posts:
             post.likes = len(Like.objects.filter(post=post.id))
 
+        paginator = Paginator(all_posts, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
         return render(request, "network/index.html", {
-            "posts": Post.objects.all()
+            "posts": all_posts,
+            "page_obj": page_obj
         })
 
 
@@ -80,7 +89,8 @@ def register(request):
 def profile(request, user_id):
 
     # Check if the user that is watching the page is the profile user
-    if user_id == request.user:
+    profile_user = User.objects.get(pk=user_id)
+    if profile_user == request.user:
         is_user = True
     else:
         is_user = False
@@ -95,6 +105,8 @@ def profile(request, user_id):
             is_following = False
         else:
             is_following = True
+    else:
+        is_following = False
 
     # Get all the posts of the profile user
     user_posts = Post.objects.filter(user=user_id)
@@ -110,12 +122,52 @@ def profile(request, user_id):
     return render(request, "network/profile.html", {
         "posts": user_posts,
         "is_user": is_user,
-        "user": User.objects.get(pk=user_id),
+        "profile_user": profile_user,
         "followers_n": followers_n,
         "following_n": following_n,
         "is_following": is_following
     })
 
-
+@login_required
 def follow(request, user_id):
-    pass
+    if request.method == "POST":
+            
+        # Get the information of the profile user and log-in user
+        following_user = User.objects.get(pk=user_id)
+        follower_user = User.objects.get(pk=request.user.id)
+        
+        # Get the list of followers with the log-in user
+        user_all_followers = Follower.objects.filter(follower=request.user.id)
+        if not user_all_followers:
+            user_profile_follower = None
+
+        user_profile_follower = user_all_followers.filter(following=user_id)
+
+        # If the filtered list is empty then it creates the new follower
+        if not user_profile_follower:
+            new_follower = Follower(following=following_user, follower=follower_user)
+            new_follower.save()
+        
+        # If the list has an item with the same user_id and listing_id it will remove it
+        else:          
+            old_follower = user_profile_follower
+            old_follower.delete()
+
+        return HttpResponseRedirect(reverse("profile", args=(user_id)))
+
+@login_required
+def following(request):
+
+    following_list = Follower.objects.filter(follower=request.user)
+    following_users = []
+    for following in following_list:
+        if not following in following_users:
+            following_users.append(User.objects.get(pk=following.following_id))
+
+    for post in Post.objects.all():
+        post.likes = len(Like.objects.filter(post=post.id))
+
+    return render(request, "network/following.html", {
+        "following_users": following_users,
+        "posts": Post.objects.all()
+    })

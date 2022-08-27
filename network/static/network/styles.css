@@ -9,3 +9,7 @@ body {
 .message {
     background-color: aquamarine;
 }
+
+.buttons {
+    margin: 4px;
+}
