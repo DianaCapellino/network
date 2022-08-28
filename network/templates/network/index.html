@@ -7,7 +7,7 @@
     <form action="{% url 'index' %}" method="post">
         {% csrf_token %}
         <div class="form-group">
-            <textarea autofocus class="form-control" name="content" placeholder="Your text here"></textarea>
+            <textarea class="form-control" name="content" placeholder="Your text here"></textarea>
         </div>
         <input class="btn btn-primary" type="submit" value="Post">
     </form>
@@ -34,21 +34,26 @@
                             {{ post.content }}
                         </p>
                         <div>
-                            <textarea class="new-textareas"></textarea>
+                            <textarea class="new-textareas form-control" id="textarea-{{ post.id }}"></textarea>
                         </div>
+                        <br>
                         {% if user.is_authenticated %}
                             {% if request.user != post.user %}
                             <div class="btn-group">
                                 <form class="buttons">
                                     {% csrf_token %}
-                                    <input class="btn btn-success" type="submit" value="LIKE">
+                                    <input class="btn btn-success like-buttons" id="{{ post.id }}" type="submit" value="LIKE">
                                 </form>
                             </div>
                             {% else %}
+                                <div class="btn-group" id="edited-button-{{ post.id}}">
+                                    <form class="buttons">
+                                        <input class="btn btn-primary edit-buttons" id="{{ post.id }}" value="EDIT">
+                                    </form>
+                                </div>
                                 <div class="btn-group">
                                     <form class="buttons">
-                                        {% csrf_token %}
-                                        <input class="btn btn-primary edit-buttons" id="{{ post.id }}" type="submit" value="EDIT">
+                                        <input class="btn btn-primary save-buttons" id="save-button-{{ post.id }}" value="SAVE">
                                     </form>
                                 </div>
                             {% endif %}

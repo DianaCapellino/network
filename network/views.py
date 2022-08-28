@@ -4,8 +4,10 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 import json
+from django.forms.models import model_to_dict
 
 from .models import User, Post, Like, Follower
 
@@ -128,6 +130,7 @@ def profile(request, user_id):
         "is_following": is_following
     })
 
+
 @login_required
 def follow(request, user_id):
     if request.method == "POST":
@@ -148,12 +151,13 @@ def follow(request, user_id):
             new_follower = Follower(following=following_user, follower=follower_user)
             new_follower.save()
         
-        # If the list has an item with the same user_id and listing_id it will remove it
+        # If the list has an item then it will remove it
         else:          
             old_follower = user_profile_follower
             old_follower.delete()
 
         return HttpResponseRedirect(reverse("profile", args=(user_id)))
+
 
 @login_required
 def following(request):
@@ -171,3 +175,70 @@ def following(request):
         "following_users": following_users,
         "posts": Post.objects.all()
     })
+
+
+def get_posts(request):
+    posts = list(Post.objects.values())
+    return JsonResponse(posts, safe=False)
+
+
+@login_required
+@csrf_exempt
+def get_post(request, post_id):
+
+    # Query for requested post
+    try:
+        post_object = Post.objects.get(pk=post_id)
+        post = model_to_dict(post_object)
+    except Post.DoesNotExist:
+        return JsonResponse({"error": "Post not found."}, status=404)
+
+    # Return post contents
+    if request.method == "GET":
+        return JsonResponse(post, safe=False)
+
+    # Update post
+    elif request.method == "PUT":
+
+        # Check if the user is the writer and get json information
+        if request.user == post_object.user:
+            data = json.loads(request.body)
+
+            # Update content
+            if data.get("content") is not None:
+                post_object.content = data["content"]
+
+            # Save the changes of the post
+            post_object.save()
+            return HttpResponse(status=204)
+        else:
+
+            # Update likes
+            data = json.loads(request.body)
+            if data.get("likes") is not None:
+                post_likes = Like.objects.filter(post=post_object)
+                user_likes = post_likes.filter(user=request.user)
+
+                # If the filtered list is empty then it creates the like
+                if not user_likes:
+                    new_like = Like(post=post_object, user=request.user)
+                    new_like.save()
+                
+                # If the list has an item with the same user and post it will unlike it
+                else:          
+                    user_likes.delete()
+
+                # Update likes in post
+                post_object.likes = len(Like.objects.filter(post=post_object.id))
+
+                # Save the changes of the post
+                post_object.save()
+                return HttpResponse(status=204)
+            else:
+                return JsonResponse({"error": "User is not the writer."}, status=404)
+
+    # Email must be via GET or PUT
+    else:
+        return JsonResponse({
+            "error": "GET or PUT request required."
+        }, status=400)
