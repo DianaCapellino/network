@@ -212,33 +212,49 @@ def get_post(request, post_id):
             post_object.save()
             return HttpResponse(status=204)
         else:
-
-            # Update likes
-            data = json.loads(request.body)
-            if data.get("likes") is not None:
-                post_likes = Like.objects.filter(post=post_object)
-                user_likes = post_likes.filter(user=request.user)
-
-                # If the filtered list is empty then it creates the like
-                if not user_likes:
-                    new_like = Like(post=post_object, user=request.user)
-                    new_like.save()
-                
-                # If the list has an item with the same user and post it will unlike it
-                else:          
-                    user_likes.delete()
-
-                # Update likes in post
-                post_object.likes = len(Like.objects.filter(post=post_object.id))
-
-                # Save the changes of the post
-                post_object.save()
-                return HttpResponse(status=204)
-            else:
-                return JsonResponse({"error": "User is not the writer."}, status=404)
+            return JsonResponse({"error": "User is not the writer."}, status=404)
 
     # Email must be via GET or PUT
     else:
         return JsonResponse({
             "error": "GET or PUT request required."
         }, status=400)
+
+
+@login_required
+def like(request, post_id):
+
+    # Getting the requested post
+    try:
+        post_object = Post.objects.get(pk=post_id)
+    except Post.DoesNotExist:
+        return JsonResponse({"error": "Post not found."}, status=404)
+
+    if request.user != post_object.user:
+            
+        # Check if this user likes this post
+        post_likes = Like.objects.filter(post=post_object)
+
+        if not post_likes:
+            user_like = None
+
+        user_like = post_likes.filter(user=request.user)
+
+        # If the filtered list is empty then it creates the like
+        if not user_like:
+            new_like = Like(post=post_object, user=request.user)
+            new_like.save()
+        
+        # If the list has an item with the same user and post it will unlike it
+        else:          
+            user_likes.delete()
+
+        # Update likes in post
+        post_object.likes = len(Like.objects.filter(post=post_object.id))
+        
+        # Save the changes of the post
+        post_object.save()
+        return HttpResponse(status=204)
+
+    else:
+        return JsonResponse({"error": "User is the writer."}, status=404)

@@ -89,12 +89,11 @@ function save_post(post_id, new_content) {
 
 function like_post (post_id) {
 
-    console.log(`I like ${post_id}`)
-    // Update likes of the post
-    fetch(`/post/${post_id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-            likes: true
-        })
+    // Update likes in the page
+    fetch(`/post/${post_id}/like`)
+    .then(post => {
+        console.log(`I am liking ${post_id} `)
+        // Show the text area with current content of the post
+        //document.getElementById(`#like-${post_id}`).innerHTML=`${post.likes}`
     });
 }
