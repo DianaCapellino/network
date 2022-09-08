@@ -23,14 +23,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add event listeners to all likes buttons
-    all_like_buttons.forEach((post) => {
-        post.addEventListener("click", () => {
-            like_post(post.id);
+    // For each like button that the user already like, change to Unlike
+    fetch('/likes')
+    .then(response => response.json())
+    .then(like => {
+
+        // Get all the like buttons
+        all_like_buttons.forEach((button) => {
+
+            // Add event listeners for each like button
+            button.addEventListener("click", () => {
+                like_post(button.id);
+            });
+
+            // Change to unlike just the ones in the list
+            like.forEach((item) => {
+                if (parseInt(button.id) === item.post_id) {
+                    const btn = document.querySelector(`#like-btn-${button.id}`).firstElementChild
+                    btn.innerHTML="UNLIKE";
+                };
+            })
         });
     });
-
-})
+});
 
 
 // Function to edit the posts with post id
@@ -89,11 +104,34 @@ function save_post(post_id, new_content) {
 
 function like_post (post_id) {
 
-    // Update likes in the page
+    // Update likes in the backend
     fetch(`/post/${post_id}/like`)
-    .then(post => {
-        console.log(`I am liking ${post_id} `)
-        // Show the text area with current content of the post
-        //document.getElementById(`#like-${post_id}`).innerHTML=`${post.likes}`
+    .then(answer => {
+        
+        // Update the like button getting the info from the likes
+        fetch('/likes')
+        .then(response => response.json())
+        .then(like => {
+
+            like.forEach((item) => {
+                if (parseInt(post_id) === item.post_id) {
+                    const btn = document.querySelector(`#like-btn-${post_id}`).firstElementChild
+                    btn.innerHTML="UNLIKE";
+                }
+                else {
+                    const btn = document.querySelector(`#like-btn-${post_id}`).firstElementChild
+                    btn.innerHTML="LIKE";
+                }
+            })
+        });
+
+        // Get the updated likes
+        fetch(`/post/${post_id}`)
+        .then(response => response.json())
+        .then(post => {
+
+            // Update likes in the post
+            document.querySelector(`#like-${post_id}`).innerHTML=` ${post.likes}`;
+        });
     });
 }

@@ -1,17 +1,20 @@
 {% extends "network/layout.html" %}
 
 {% block body %}
-    <br>    
-    <h2>New Post</h2>
+    <br>
 
-    <form action="{% url 'index' %}" method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <textarea class="form-control" name="content" placeholder="Your text here"></textarea>
-        </div>
-        <input class="btn btn-primary" type="submit" value="Post">
-    </form>
-
+    {% if user.is_authenticated %}
+        <h2>New Post</h2>
+        <form action="{% url 'index' %}" method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <textarea class="form-control" name="content" placeholder="Your text here"></textarea>
+            </div>
+            <input class="btn btn-primary" type="submit" value="Post">
+        </form>
+    {% else %}
+        <h2>You must log in to create a new post.</h2>
+    {% endif %}
     <hr>
 
     <h2>All Posts</h2>
@@ -39,7 +42,7 @@
                         <br>
                         {% if user.is_authenticated %}
                             {% if request.user != post.user %}
-                            <div class="btn-group">
+                            <div class="btn-group" id="like-btn-{{ post.id }}">
                                 <button class="btn btn-success like-buttons" id="{{ post.id }}">LIKE</button>
                             </div>
                             {% else %}

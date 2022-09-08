@@ -13,6 +13,8 @@ from .models import User, Post, Like, Follower
 
 
 def index(request):
+
+    # Save the new content when user posts
     if request.method == 'POST':
         user = request.user
         content = request.POST["content"]
@@ -21,18 +23,20 @@ def index(request):
 
         return HttpResponseRedirect(reverse("index"))
 
+    # When method is gets, it brings the information of the posts
     else:
         all_posts = Post.objects.all()
         for post in all_posts:
             post.likes = len(Like.objects.filter(post=post.id))
 
+        # Paginator configuration
         paginator = Paginator(all_posts, 10)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
         return render(request, "network/index.html", {
             "posts": all_posts,
-            "page_obj": page_obj
+            "page_obj": page_obj,
         })
 
 
@@ -162,12 +166,16 @@ def follow(request, user_id):
 @login_required
 def following(request):
 
+    # Get the list of the objects where the log-in user is following
     following_list = Follower.objects.filter(follower=request.user)
+
+    # Get the list of the users following
     following_users = []
     for following in following_list:
         if not following in following_users:
             following_users.append(User.objects.get(pk=following.following_id))
 
+    # Get the current likes for the posts
     for post in Post.objects.all():
         post.likes = len(Like.objects.filter(post=post.id))
 
@@ -178,6 +186,8 @@ def following(request):
 
 
 def get_posts(request):
+
+    # Get the list of the posts and retur json
     posts = list(Post.objects.values())
     return JsonResponse(posts, safe=False)
 
@@ -230,6 +240,7 @@ def like(request, post_id):
     except Post.DoesNotExist:
         return JsonResponse({"error": "Post not found."}, status=404)
 
+    # Check if the user is not the owner of the post
     if request.user != post_object.user:
             
         # Check if this user likes this post
@@ -247,7 +258,7 @@ def like(request, post_id):
         
         # If the list has an item with the same user and post it will unlike it
         else:          
-            user_likes.delete()
+            user_like.delete()
 
         # Update likes in post
         post_object.likes = len(Like.objects.filter(post=post_object.id))
@@ -258,3 +269,17 @@ def like(request, post_id):
 
     else:
         return JsonResponse({"error": "User is the writer."}, status=404)
+
+
+@login_required
+def get_likes(request):
+
+    # Get the likes only for this user and return the json
+    if request.user:
+        user_likes = Like.objects.filter(user=request.user)
+        user_likes_list = list(user_likes.values())
+        return JsonResponse(user_likes_list, safe=False)
+    
+    # If the user is not log in there will be an error
+    else:
+        return JsonResponse({"error": "You must log in."}, status=404)
